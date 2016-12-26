@@ -11,6 +11,35 @@ def topK(v,k,data):
         if v > ts:
             heapq.heapreplace(data,v)
 
+def scale(data,title):
+    rst = []
+    for t in title:
+        rst.append(data[t].max()-data[t].min())
+    return rst
+
+def dis(data,i,j,norm=False):
+    N = data.max()-data.min() if norm else 1.0
+    first = (data.irow(i)-data.irow(j))/N
+    second = first * first
+    third = second.sum()
+    return math.sqrt(third)
+
+def getAvgDis(data,leng,norm=False):
+    avg = 0
+    for i in range(0,leng):
+        for j in range(i+1,leng):
+           avg += dis(data,i,j,norm)
+    return avg/float(leng)
+
+
+def revCum(i,leng):
+    s = leng
+    e = leng - (i-1)
+    return (s+e)*i/2
+
+
+def iLog(value):
+    return 0-value*math.log(value,2)
 
 class custHeap():
     data = []

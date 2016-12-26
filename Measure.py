@@ -3,47 +3,23 @@ import pandas as pd
 import random
 from Helper import *
 
-testdata = pd.read_csv('data/test.csv')
-
-
-
-def scale(data,title):
-    rst = []
-    for t in title:
-        rst.append(data[t].max()-data[t].min())
-    return rst
-
-
-def dis(data,i,j,norm=False):
-    N = data.max()-data.min() if norm else 1.0
-    first = (data.irow(i)-data.irow(j))/N
-    second = first * first
-    third = second.sum()
-    return math.sqrt(third)
-
-def getAvgDis(data,leng,norm=False):
-    avg = 0
-    for i in range(0,leng):
-        for j in range(i+1,leng):
-           avg += dis(data,i,j,norm)
-    return avg/float(leng)
-
-
-
-def revCum(i,leng):
-    s = leng
-    e = leng - (i-1)
-    return (s+e)*i/2
-
-
-def iLog(value):
-    return 0-value*math.log(value,2)
 
 
 
 
-#Entropy based on Euc
+
+
+
+
+
+
+
+
+
 def getEnt(data,alpha=None):
+    """
+        Clustering metric based on entropy without label info
+    """
     leng = len(data)
     E = 0
     if alpha is None:
@@ -55,8 +31,11 @@ def getEnt(data,alpha=None):
             E += Sij*math.log(Sij)+(1-Sij)*math.log(1-Sij)
     return -E
 
-#discretization of continous value
+
 def discretization(data=None,segment_num=10):
+    """
+        Discretization of continous value
+    """
     data_rst = copy.deepcopy(data)
     fl = list(data.head(n=0))
     features = {}
@@ -88,9 +67,12 @@ def discretization(data=None,segment_num=10):
                     data_rst.iloc[i][feature] = j
                     break
     return data_rst
-#Entropy and cov calculation
+
 #TODO Haven't been tested
 def preHandle(data_con=None,data_dis=None,features=None,label=None):
+    """
+        Calculation of covariation,center,probility for each cluster(label)
+    """
     sw = None
     sb = None
     if features is None:

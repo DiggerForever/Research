@@ -1,8 +1,11 @@
 from Measure import *
 
 
-
+#TODO Haven't been tested
 def infoGain(entropy_pre,features,label):
+    """
+        InfoGain between feature(s) and label
+    """
     sum = float(len(label))
     I_whole = 0.0
     I_feature = {}
@@ -44,8 +47,11 @@ def infoGain(entropy_pre,features,label):
     I_feature = tmp/float(len(features))
     return I_feature,I_whole
 
-
+#TODO Haven't been tested
 def DBI(data,cov_pre,label):
+    """
+        Davies-Bouldin index
+    """
     S = {}
     data_leng = len(data)
     for i in range(data_leng):
@@ -76,11 +82,22 @@ def DBI(data,cov_pre,label):
 def f(a,b,stdev):
     e = eucli(a,b)
     return 0.0 if e > stdev else 1.0
-def SDBW(data,data_var,cov_pre,label):
+
+#TODO Haven't been tested
+def SDBW(data=None,cov_pre=None,feature_leng=None):
+    """
+        S_Dbw validity index
+    """
     NC = float(len(cov_pre))
     Scat = 0.0
+    data_var = data.var().as_matrix()
+    if feature_leng is None:
+        feature_leng = len(list(data.head(n=0)))
     for l in cov_pre:
-        theta = np.array(cov_pre[l]['var'])
+        var = np.array([0.0 for _ in range(feature_leng)])
+        for _ in range(feature_leng):
+            var[_] = cov_pre[l]['cov'][_][_]
+        theta = var
         Scat += math.sqrt((theta*theta).sum())
     stdev = math.sqrt(Scat)/NC
     Scat /= NC
@@ -113,34 +130,73 @@ def SDBW(data,data_var,cov_pre,label):
         sdbw = 100
     return sdbw
 
-def entropyWithoutLabel(data):
-    pass
+def entropyWithoutLabel(data=None,alpha=None):
+    """
+        Clustering metric based on entropy without label info
+    """
+    leng = len(data)
+    E = 0
+    if alpha is None:
+        alpha = -math.log(0.5) / getAvgDis(data, leng, True)
+    for i in range(0, leng):
+        for j in range(0, leng):
+            Dij = dis(data, i, j, True)
+            Sij = math.exp(-alpha * Dij)
+            E += Sij * math.log(Sij) + (1 - Sij) * math.log(1 - Sij)
+    return -E
 
-def HypothesisTest(cov_pre,feature_leng):
+#TODO Haven't been tested
+def HypothesisTest(cov_pre=None,feature_leng=0,bunch=False):
+    """
+        Feature selection based on statistical hypothesis testing
+    """
+    label_leng = len(cov_pre)
+    label_n = (1.0 + label_leng) * label_leng / 2.0
     # assume that every feature is independent from each other
-    leng = len(cov_pre)
-    value = [0.0 for _ in range(feature_leng)]
-    for label_a in cov_pre:
-        a = cov_pre[label_a]
-        cov_a = a['cov']
-        count_a = a['count']
-        for label_b in cov_pre:
-            b = cov_pre[label_b]
-            cov_b = b['cov']
-            count_b = b['count']
-            for fi in range(feature_leng):
-                mean_a = a['center'][fi]
-                mean_b = b['center'][fi]
-                var_a = cov_a[fi][fi]
-                var_b = cov_b[fi][fi]
-                q = math.fabs(mean_a - mean_b) / math.sqrt(
-                    1.0 / ((count_a - 1.0) * (count_b - 1.0)) * (var_a * count_a + var_b * count_b) * 2.0 / (
-                    count_a + count_b))
-                value[fi] += q
-    n = (1.0 + leng) * leng / 2.0
-    value = [v / n for v in value]
-    rst = np.array(value).mean()
+    if not bunch:
+        value = [0.0 for _ in range(feature_leng)]
+        for label_a in cov_pre:
+            a = cov_pre[label_a]
+            cov_a = a['cov']
+            count_a = a['count']
+            for label_b in cov_pre:
+                b = cov_pre[label_b]
+                cov_b = b['cov']
+                count_b = b['count']
+                for fi in range(feature_leng):
+                    mean_a = a['center'][fi]
+                    mean_b = b['center'][fi]
+                    var_a = cov_a[fi][fi]
+                    var_b = cov_b[fi][fi]
+                    q = math.fabs(mean_a - mean_b) / math.sqrt(
+                        1.0 / ((count_a - 1.0) * (count_b - 1.0)) * (var_a * (count_a-1.0) + var_b * (count_b-1.0)) * 2.0 / (
+                        count_a + count_b))
+                    value[fi] += q
+        value = [v / label_n for v in value]
+        rst = np.array(value).mean()
     # a bunch of  features as a whole
+    else:
+        value = 0.0
+        for label_a in cov_pre:
+            a = cov_pre[label_a]
+            cov_a = a['cov']
+            count_a = a['count']
+            center_a = a['center']
+            for label_b in cov_pre:
+                b = cov_pre[label_b]
+                cov_b = b['cov']
+                count_b = b['count']
+                center_b = b['center']
+                #choice 1
+                #down = np.trace(cov_a)+np.trace(cov_b)
+                #choice 2
+                down = np.linalg.det(cov_a)+np.linalg.det(cov_b)
+                #choice 3
+                #down = np.linalg.norm(cov_a)+np.linalg.norm(cov_b)
+                value += ((center_a-center_b)*(center_a-center_b)).sum()/math.sqrt(down)
+        rst = value / label_n
+    return rst
+
 
 def fisher(data,cov_pre):
     pass
@@ -155,11 +211,20 @@ def _dMatusita(a,b):
     pass
 def _dPatrickFisher(a,b):
     pass
+
+#TODO Haven't been finished
 def divergence(entropy_pre,features,data_leng,fun_measure):
+    """
+        Calculation of divergence which has the similar effect of infogain
+    """
+    fun_measure_list = ['_dChernoff','_dKullbackLiebler','_dKolmogorov','_dMatusita','_dPatrickFisher']
+    if fun_measure not in fun_measure_list:
+        raise ValueError('fun_measure must be in {'+','.join(fun_measure_list)+'}')
     wev = entropy_pre['wev']
     fev = entropy_pre['fev']
     value = entropy_pre['value']
     rst = {}
+    #a bunch of feature as a whole(there may be dependency among features)
     for w in wev:
         for li in value:
             pwi = 0.0
@@ -180,6 +245,7 @@ def divergence(entropy_pre,features,data_leng,fun_measure):
     for ll in rst:
         sum += rst[ll][0] * rst[ll][1]
     sumf = 0.0
+    #assume that every feature is independent from each other
     for f in features:
         rst = {}
         for s in fev[f]:
