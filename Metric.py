@@ -174,7 +174,7 @@ def HypothesisTest(cov_pre=None,feature_leng=0,bunch=False):
                     value[fi] += q
         value = [v / label_n for v in value]
         rst = np.array(value).mean()
-    # a bunch of  features as a whole
+    # a bunch of features as a whole
     else:
         value = 0.0
         for label_a in cov_pre:
@@ -197,9 +197,22 @@ def HypothesisTest(cov_pre=None,feature_leng=0,bunch=False):
         rst = value / label_n
     return rst
 
+def J1(sb,sw):
+    return np.trace(sw+sb)/np.trace(sw)
+def J2(sb,sw):
+    return np.linalg.det(np.dot(np.linalg.inv(sw),(sw+sb)))
+def J3(sb,sw):
+    return np.trace(np.dot(np.linalg.inv(sw),(sw+sb)))
+#TODO Haven't been finished
+def scatter(sb,sw,fun_measure):
+    """
+        Calculation of Scatter matracies and Fisber's discreminant ratio
+    """
+    fun_measure_list = ['J1','J2','J3']
+    if fun_measure not in fun_measure_list:
+        raise ValueError('fun_measure must be in {'+','.join(fun_measure_list)+'}')
+    return eval(fun_measure)(sb,sw)
 
-def fisher(data,cov_pre):
-    pass
 
 def _dChernoff(a,b):
     pass
