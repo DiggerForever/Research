@@ -206,7 +206,7 @@ def J3(sb,sw):
 #TODO Haven't been finished
 def scatter(sb,sw,fun_measure):
     """
-        Calculation of Scatter matracies and Fisber's discreminant ratio
+        Calculation of Scatter matracies
     """
     fun_measure_list = ['J1','J2','J3']
     if fun_measure not in fun_measure_list:

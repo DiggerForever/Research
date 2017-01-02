@@ -1,6 +1,4 @@
 import random
 from sklearn.cluster import *
+from visualization import *
 
-class BaseFrameWork:
-    def __init__(self):
-        pass

@@ -1,6 +1,35 @@
 import heapq
 import math
-import copy
+import os
+from sklearn.decomposition import PCA
+
+def handle(path_in=None,path_out=None,poses_fix=[],poses_del=[],title=[],remove_old=True):
+    ref = {}
+    for p in poses_fix:
+        ref[p] = {}
+    out = open(path_out,'a')
+    out.write(','.join(title)+'\n')
+    with open(path_in) as data:
+        for line in data:
+            value = line.split(',')
+            value[len(value)-1] = value[len(value)-1].replace('\n','')
+            rst = ''
+            for _ in range(len(value)):
+                if _ not in poses_del:
+                    if _ in poses_fix:
+                        if value[_] not in ref[_]:
+                            ref[_][value[_]] = len(ref[_])
+                        value[_] = str(ref[_][value[_]])
+                    rst += value[_] + ','
+            out.write(rst.rstrip(',')+'\n')
+            #print(rst.rstrip(','))
+            del rst
+            del value
+    data.close()
+    out.close()
+    del ref
+    if remove_old:
+        os.remove(path_in)
 
 def topK(v,k,data):
     v = -v
@@ -42,6 +71,10 @@ def iLog(value):
     return 0-value*math.log(value,2)
 
 class custHeap():
+    """
+        A customized heap for picking out the K maximum(minimum) instances from a huge dataset.
+    """
+    stat = {}
     data = []
     k = 0
     hold = False
@@ -49,10 +82,12 @@ class custHeap():
         self.k = k
     def get(self):
         rst = sorted(self.data)
-        return rst
+        return rst,self.stat
 
     def reset(self):
-        self.data.clear()
+        while len(self.data) > 0:
+            self.data.remove(self.data[0])
+        self.stat.clear()
         self.hold = False
     def adjust(self,i):
         l = int(((i+1)<<1)-1)
@@ -71,12 +106,29 @@ class custHeap():
     def add(self,e):
         if(len(self.data) < self.k):
             self.data.append(e)
+            if e[2] not in self.stat:
+                self.stat[e[2]] = {'count':1.0,'dis':e[0]}
+            else:
+                self.stat[e[2]]['count'] += 1.0
+                self.stat[e[2]]['dis'] += e[0]
         else:
             if(not self.hold):
                 for i in range(int(len(self.data)/2-1),-1,-1):
                     self.adjust(i)
                 self.hold = True
             if(e[0]<self.data[0][0]):
+                old = self.data[0]
+                new = e
+                self.stat[old[2]]['count'] -= 1.0
+                self.stat[old[2]]['dis'] -= old[0]
+                if self.stat[old[2]]['count'] ==0.0:
+                    del self.stat[old[2]]
+
+                if new[2] in self.stat:
+                    self.stat[new[2]]['count'] += 1.0
+                    self.stat[new[2]]['dis'] += new[0]
+                else:
+                    self.stat[new[2]] = {'count':1.0,'dis':new[0]}
                 self.data[0] = e
                 self.adjust(0)
 def skew2Order(i,j,leng):
@@ -96,6 +148,26 @@ def eucli(a,b):
 
 def getUniqueWithLabel(index,label):
     rindex = {}
+    pos = {}
     for _ in range(len(index)):
         rindex[index[_]] = label[_]
-    print(rindex)
+        pos[index[_]] = _
+    return rindex,pos
+
+pca = PCA(n_components=3)
+def getDRdata(data):
+    return pca.fit_transform(data)
+
+#TODO
+def getLabelDegree(count,dis_avg):
+    """
+        Decide which label(cluster) a certain instance should be assigned to.
+        :param count: The number of nearest instances of a certain cluster
+        :param dis_avg: The average distance of all the nearest instances to a undetermined instance
+        :return:
+    """
+    return 1.0
+
+#TODO
+def getInstanceWeight(stat,true_label):
+    pass
