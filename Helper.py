@@ -1,7 +1,12 @@
 import heapq
 import math
 import os
+import platform
+import numpy as np
+import random
+from decimal import Decimal
 from sklearn.decomposition import PCA
+import time
 
 def handle(path_in=None,path_out=None,poses_fix=[],poses_del=[],title=[],remove_old=True):
     ref = {}
@@ -171,3 +176,61 @@ def getLabelDegree(count,dis_avg):
 #TODO
 def getInstanceWeight(stat,true_label):
     pass
+
+
+
+def getVersion():
+    return int(platform.python_version()[0])
+
+
+def listClear(list):
+    while(len(list) > 0):
+        list[0].remove()
+
+
+def betterSample(body=None,prob_list=None,sample_count=20,max_prob=0.6,grow_base=1.2):
+    d = {}
+    size = len(prob_list)
+    sum = 0.0
+    for _ in range(sample_count):
+        for i in range(len(prob_list)):
+            if random.uniform(0,1) < prob_list[i]:
+                if body[i] in d:
+                    d[body[i]] += 1.0
+                else:
+                    d[body[i]] = 1.0
+                sum += 1.0
+    d = sorted(d.items(), key=lambda d: d[1],reverse=True)
+    name = []
+    freq = []
+    freq_int = []
+    freq_norm = []
+    freq_norm_e = []
+
+    freq_sum = 0.0
+    freq_sum_int = 0
+    for _ in range(len(d)):
+        n = d[_][0]
+        v = d[_][1]
+        v /= (sum/float(size))
+        name.append(n)
+        freq.append(v)
+        v_int = int('{:.0f}'.format(Decimal(str(v))))
+        freq_int.append(v_int)
+        freq_norm.append(v)
+        freq_sum += v
+        freq_sum_int += v_int
+    freq_interval = 0.0
+    for _ in range(len(freq)):
+        freq_norm[_] /= freq_sum
+        if _ == 0:
+            freq_interval = max_prob / freq_norm[_]
+            freq_norm[_] = max_prob
+        else:
+            freq_norm[_] *= freq_interval
+        freq_norm_e.append(math.pow(grow_base,freq_norm[_]))
+    print(name)
+    print(freq)
+    print(freq_int)
+    print(freq_norm)
+    print(freq_norm_e)
