@@ -87,3 +87,4 @@ class boostWithNN(AdaBoost):
             weight = getInstanceWeight(stat, fittest_label)
             eps += weight
             self.weight_list[i] = weight
+        return eps

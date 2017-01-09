@@ -56,3 +56,4 @@ class boostWithCenter(AdaBoost):
             weight = 1.0 - hgood + hbad
             eps += self.prob_list[di] * weight
             self.weight_list[di] = weight
+        return eps
