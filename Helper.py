@@ -6,6 +6,7 @@ import numpy as np
 import random
 from decimal import Decimal
 from sklearn.decomposition import PCA
+from sklearn.metrics.pairwise import *
 import time
 
 def handle(path_in=None,path_out=None,poses_fix=[],poses_del=[],title=[],remove_old=True):
@@ -39,11 +40,11 @@ def handle(path_in=None,path_out=None,poses_fix=[],poses_del=[],title=[],remove_
 def topK(v,k,data):
     v = -v
     if(len(data)<k):
-        heapq.heappush(data,v)
+        heapq.heappush(data,-v)
     else:
         ts = data[0]
         if v > ts:
-            heapq.heapreplace(data,v)
+            heapq.heapreplace(data,-v)
 
 def scale(data,title):
     rst = []
@@ -53,7 +54,7 @@ def scale(data,title):
 
 def dis(data,i,j,norm=False):
     N = data.max()-data.min() if norm else 1.0
-    first = (data.irow(i)-data.irow(j))/N
+    first = (data[i]-data[j])/N
     second = first * first
     third = second.sum()
     return math.sqrt(third)
@@ -146,6 +147,9 @@ def jaccard(a,b):
     return float(len(a.intersection(b)))/float(len(a.union(b)))
 
 def eucli(a,b):
+    #return math.sqrt(((a-b)*(a-b)).sum())
+    #return euclidean_distances([a],[b])[0][0]
+    #return 5.0
     sum = 0.0
     for _ in range(len(a)):
         sum += (a[_]-b[_])*(a[_]-b[_])

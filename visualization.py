@@ -17,7 +17,7 @@ def draw(id=0,label=None,data=None,major=None,other=None,whole_data=None):
     if isinstance(label,np.ndarray):
         y = label.astype(np.float)
     z = np.array([0.0 for _ in range(len(data))])
-    ax.scatter(data[:, 0], data[:, 1], z, c=y)
+    ax.scatter(data[:, 0], data[:, 1], data[:,2], c=y)
 
     ax.w_xaxis.set_ticklabels([])
     ax.w_yaxis.set_ticklabels([])

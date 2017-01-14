@@ -1,24 +1,26 @@
 from Measure import *
 
 
-#TODO Haven't been tested
-def infoGain(entropy_pre,features,label):
+
+def infoGain(entropy_pre,features):
     """
         InfoGain between feature(s) and label
     """
-    sum = float(len(label))
-    I_whole = 0.0
+    sum = 0.0
+    for label in entropy_pre['value']:
+        sum += entropy_pre['value'][label]['count']
+    #I_whole = 0.0
     I_feature = {}
     entropy_feature = {}
     for f in features:
         I_feature[f] = 0.0
         entropy_feature[f] = {}
     body = entropy_pre['value']
-    entropy_whole = {}
+    #entropy_whole = {}
     for label in body:
         node = body[label]
         ils = iLog(float(node['count'])/sum)
-        I_whole += ils
+        #I_whole += ils
         for f in node['single']:
             single = node['single'][f]
             crt_entropy = entropy_feature[f]
@@ -29,14 +31,14 @@ def infoGain(entropy_pre,features,label):
                     crt_entropy[s] = iLog(v)
                 else:
                     crt_entropy[s] += iLog(v)
-        for whole in node['whole']:
-            v = float(node['whole'][whole])/float(entropy_pre['wev'][whole])
-            if whole not in entropy_whole:
-                entropy_whole[whole] = iLog(v)
-            else:
-                entropy_whole[whole] += iLog(v)
-    for whole in entropy_whole:
-        I_whole -= float(entropy_pre['wev'][whole])/sum*entropy_whole[whole]
+        # for whole in node['whole']:
+        #     v = float(node['whole'][whole])/float(entropy_pre['wev'][whole])
+        #     if whole not in entropy_whole:
+        #         entropy_whole[whole] = iLog(v)
+        #     else:
+        #         entropy_whole[whole] += iLog(v)
+    # for whole in entropy_whole:
+    #     I_whole -= float(entropy_pre['wev'][whole])/sum*entropy_whole[whole]
     for f in entropy_feature:
         for s in entropy_feature[f]:
             I_feature[f] -= float(entropy_pre['fev'][f][s])/sum*entropy_feature[f][s]
@@ -45,10 +47,10 @@ def infoGain(entropy_pre,features,label):
         tmp += I_feature[f]
     del I_feature
     I_feature = tmp/float(len(features))
-    return I_feature,I_whole
+    return I_feature#,I_whole
 
-#TODO Haven't been tested
-def DBI(data,cov_pre,label):
+
+def DBI(data,cov_pre,labels):
     """
         Davies-Bouldin index
     """
@@ -56,7 +58,7 @@ def DBI(data,cov_pre,label):
     data_leng = len(data)
     for i in range(data_leng):
         x = list(data.iloc[i])
-        label = label[i]
+        label = labels[i]
         center = cov_pre[label]['center']
         if label in S:
             S[label] += eucli(x,center)
@@ -130,19 +132,21 @@ def SDBW(data=None,cov_pre=None,feature_leng=None):
         sdbw = 100
     return sdbw
 
-def entropyWithoutLabel(data=None,alpha=None):
+def entropyWithoutLabel(data=None,alpha=1.0):
     """
         Clustering metric based on entropy without label info
     """
     leng = len(data)
     E = 0
-    if alpha is None:
-        alpha = -math.log(0.5) / getAvgDis(data, leng, True)
     for i in range(0, leng):
         for j in range(0, leng):
-            Dij = dis(data, i, j, True)
-            Sij = math.exp(-alpha * Dij)
-            E += Sij * math.log(Sij) + (1 - Sij) * math.log(1 - Sij)
+            if j != i:
+                Sij = dis(data, i, j)/alpha
+                if Sij == 1.0:
+                    Sij -= 0.000001
+                if Sij == 0.0:
+                    Sij += 0.000001
+                E += Sij * math.log(Sij) + (1 - Sij) * math.log(1 - Sij)
     return -E
 
 #TODO Haven't been tested
@@ -282,3 +286,57 @@ def divergence(entropy_pre,features,data_leng,fun_measure):
             sum += rst[ll][0] * rst[ll][1]
         sumf += sum
     sumf /= float(len(features))
+
+
+def RELIEF(cov_pre=None,data=None,k=0,whole=True):
+
+    w = 0.0
+    dis_assist = {}
+    for label_crt in cov_pre:
+        data_pos_crt = cov_pre[label_crt]['data_pos']
+        for i_in in data_pos_crt:
+            crt_data = (data[i_in])
+            if whole:
+                nn_in = []
+                nn_out = []
+            else:
+                nn_in = [[] for _ in range(len(crt_data))]
+                nn_out = [[] for _ in range(len(crt_data))]
+            for j_in in data_pos_crt:
+                if j_in != i_in:
+                    if whole:
+                        mark = str(i_in+j_in)+','+str(i_in*j_in)
+                        if mark in dis_assist:
+                            euc = dis_assist[mark]
+                        else:
+                            euc = eucli(crt_data, (data[j_in]))
+                            dis_assist[mark] = euc
+                        topK(euc, k, nn_in)
+                    else:
+                        for _ in range(len(crt_data)):
+                            topK(math.fabs(crt_data[_]-(data[j_in])[_]),k,nn_in[_])
+            for label_other in cov_pre:
+                if label_other != label_crt:
+                    data_pos_other = cov_pre[label_other]['data_pos']
+                    for i_out in data_pos_other:
+                        if whole:
+                            mark = str(i_in + i_out) + ',' + str(i_in * i_out)
+                            if mark in dis_assist:
+                                euc = dis_assist[mark]
+                            else:
+                                euc = eucli(crt_data, (data[i_out]))
+                                dis_assist[mark] = euc
+                            topK(euc, k, nn_out)
+                        else:
+                            for _ in range(len(crt_data)):
+                                topK(math.fabs(crt_data[_]-(data[i_out])[_]),k,nn_out[_])
+            if whole:
+                w += np.array(nn_in).mean() - np.array(nn_out).mean()
+            else:
+                ww = 0.0
+                for _ in range(len(crt_data)):
+                    ww += np.array(nn_in[_]).mean() - np.array(nn_out[_]).mean()
+                ww /= float(len(crt_data))
+                w += ww
+    w /= float(len(data))
+    return w

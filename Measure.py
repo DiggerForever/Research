@@ -38,11 +38,8 @@ def discretization(data=None,segment_num=10):
         Discretization of continous value
     """
     data_rst = copy.deepcopy(data)
-    fl = list(data.head(n=0))
-    features = {}
-    for _ in range(len(fl)):
-        features[_] = fl[_]
-    del fl
+    features = list(data.head(n=0))
+
     mind = data.min()
     min_values = {}
     for f in features:
@@ -65,36 +62,36 @@ def discretization(data=None,segment_num=10):
             min_value = min_values[feature]
             for j in range(int(segment_num)):
                 if crt_value >= min_value + j * step_value and crt_value <= min_value + (j + 1) * step_value:
-                    data_rst.iloc[i][feature] = j
+                    data_rst.loc[i,feature] = j
                     break
     return data_rst
 
-#TODO Haven't been tested
+
 def preHandle(data_con=None,data_dis=None,features=None,label=None):
     """
         Calculation of covariation,center,probility for each cluster(label)
     """
     sw = None
     sb = None
+    data = data_con if data_con is not None else data_dis
     if features is None:
-        fl = list(data_con.head(n=0))
+        fl = list(data.head(n=0))
         features = {}
         for _ in range(len(fl)):
             features[_] = fl[_]
         del fl
     if isinstance(label,str):
         label_dimension = list(features[label])
-    if isinstance(label,list) or isinstance(label,np.array):
-        if len(data_con) != len(label):
-            raise ValueError('size of labels must be equal to that of data!')
+    if isinstance(label,list) or isinstance(label,np.ndarray):
         label_dimension = label
     feature_leng = len(features)
     #symt_leng = (1+feature_leng)*feature_leng/2
     entropy_pre = {'value':{}}
     cov_pre = {}
-    data_leng = len(data_con)
+    data_leng = len(data)
     feature_entropy_value = {}
-    for feature in features:
+    for _ in features:
+        feature = features[_]
         feature_entropy_value[feature] = {}
     whole_entropy_value = {}
     for i in range(data_leng):
@@ -110,7 +107,8 @@ def preHandle(data_con=None,data_dis=None,features=None,label=None):
                 entropy_pre['value'][label_value]['whole'] = {}
             else:
                 entropy_pre['value'][label_value]['count'] += 1.0
-            for feature in features:
+            for _ in features:
+                feature = features[_]
                 dl_f = crt_row_value_dis[feature]
                 row += str(dl_f)+','
                 fdv_f = feature_entropy_value[feature]
@@ -121,7 +119,7 @@ def preHandle(data_con=None,data_dis=None,features=None,label=None):
                 der_lv = entropy_pre['value'][label_value]
                 if feature not in der_lv['single']:
                     der_lv['single'][feature] = {}
-                if dl_f in der_lv[feature]['single']:
+                if dl_f in der_lv['single'][feature]:
                     der_lv['single'][feature][dl_f] += 1.0
                 else:
                     der_lv['single'][feature][dl_f] = 1.0
@@ -147,7 +145,7 @@ def preHandle(data_con=None,data_dis=None,features=None,label=None):
                     fa = features[fai]
                     cr_l['center'][fai] += crt_row_value_con[fa]
                     for fbj in range(0,feature_leng):
-                        fb = feature[fbj]
+                        fb = features[fbj]
                         cr_l['cov'][fai][fbj] += crt_row_value_con[fa]*crt_row_value_con[fb]
                     # for fbj in range(fai,feature_leng):
                     #     fb = features[fbj]
@@ -161,7 +159,7 @@ def preHandle(data_con=None,data_dis=None,features=None,label=None):
                     fa = features[fai]
                     cr_l['center'][fai] = crt_row_value_con[fa]
                     for fbj in range(0,feature_leng):
-                        fb = feature[fbj]
+                        fb = features[fbj]
                         cr_l['cov'][fai][fbj] = crt_row_value_con[fa]*crt_row_value_con[fb]
                     # for fbj in range(fai,feature_leng):
                     #     fb = features[fbj]
@@ -190,6 +188,7 @@ def preHandle(data_con=None,data_dis=None,features=None,label=None):
         for label_value in cov_pre:
             cr_l = cov_pre[label_value]
             w = cr_l['count']/float(data_leng)
+            cr_l['center'] /= cr_l['count']
             label_w.append(w)
             u0 += cr_l['center'] * w
             sw += cr_l['cov']*w
