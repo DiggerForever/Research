@@ -1,36 +1,6 @@
-import numpy as np
-import pandas as pd
-import random
+
 import copy
 from Helper import *
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def getEnt(data,alpha=None):
-    """
-        Clustering metric based on entropy without label info
-    """
-    leng = len(data)
-    E = 0
-    if alpha is None:
-        alpha = -math.log(0.5)/getAvgDis(data,leng,True)
-    for i in range(0,leng):
-        for j in range(0,leng):
-            Dij = dis(data,i,j,True)
-            Sij = math.exp(-alpha*Dij)
-            E += Sij*math.log(Sij)+(1-Sij)*math.log(1-Sij)
-    return -E
 
 
 def discretization(data=None,segment_num=10):
@@ -147,10 +117,6 @@ def preHandle(data_con=None,data_dis=None,features=None,label=None):
                     for fbj in range(0,feature_leng):
                         fb = features[fbj]
                         cr_l['cov'][fai][fbj] += crt_row_value_con[fa]*crt_row_value_con[fb]
-                    # for fbj in range(fai,feature_leng):
-                    #     fb = features[fbj]
-                    #     order = symt2Order(fai,fbj,feature_leng)
-                    #     cr_l['cov'][order] += crt_row_value_con[fa]*crt_row_value_con[fb]
             else:
                 cov_pre[label_value] = {'cov':np.array([[0.0 for _i in range(feature_leng)] for _j in range(feature_leng)]),'count':1.0,'data_pos':[i],'center':np.array([0.0 for _ in range(feature_leng)])}
                 #cov_pre[label_value] = {'cov':np.array([0.0 for _ in range(int(symt_leng))]),'count':1.0,'data_pos':[i],'center':np.array([0.0 for _ in range(feature_leng)])}
@@ -161,10 +127,6 @@ def preHandle(data_con=None,data_dis=None,features=None,label=None):
                     for fbj in range(0,feature_leng):
                         fb = features[fbj]
                         cr_l['cov'][fai][fbj] = crt_row_value_con[fa]*crt_row_value_con[fb]
-                    # for fbj in range(fai,feature_leng):
-                    #     fb = features[fbj]
-                    #     order = symt2Order(fai,fbj,feature_leng)
-                    #     cr_l['cov'][order] = crt_row_value_con[fa]*crt_row_value_con[fb]
     #prepare for HypothesisTest and FisherMetric
     if data_con is not None:
         for label_value in cov_pre:
@@ -175,12 +137,6 @@ def preHandle(data_con=None,data_dis=None,features=None,label=None):
                     l = cr_l['center'][fai]
                     r = cr_l['center'][fbj]
                     cr_l['cov'][fai][fbj] = (cov - l*r / cr_l['count']) / float(cr_l['count'] - 1.0)
-                # for fbj in range(fai,len(features)):
-                #     pos = symt2Order(fai,fbj,feature_leng)
-                #     cov = cr_l['cov'][pos]
-                #     l = cr_l['center'][fai]
-                #     r = cr_l['center'][fbj]
-                #     cr_l['cov'][pos] = (cov - l*r/cr_l['count'])/float(cr_l['count']-1.0)
         label_w = []
         center_matrix = []
         u0 = np.array([0.0 for _ in range(feature_leng)])
@@ -200,8 +156,6 @@ def preHandle(data_con=None,data_dis=None,features=None,label=None):
             ui = center_matrix[_]
             sb += np.matrix(ui).transpose()*np.matrix(ui)*label_w[_]
         sb = np.array(sb)
-
-
     if data_dis is not None:
         entropy_pre['fev'] = feature_entropy_value
         entropy_pre['wev'] = whole_entropy_value

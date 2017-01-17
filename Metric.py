@@ -1,4 +1,4 @@
-from Measure import *
+from Prepare import *
 
 
 
@@ -44,6 +44,7 @@ def infoGain(entropy_pre,features):
             I_feature[f] -= float(entropy_pre['fev'][f][s])/sum*entropy_feature[f][s]
     tmp = 0.0
     for f in I_feature:
+        print(f+':'+str(I_feature[f]))
         tmp += I_feature[f]
     del I_feature
     I_feature = tmp/float(len(features))

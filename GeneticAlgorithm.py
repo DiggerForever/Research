@@ -9,6 +9,7 @@ class GeneticAlgorithm():
     MUTATION_MODE = ['Random', 'RandomOnSplendid', 'RandomOnPoor', 'Splendid', 'Poor']
 
     population_size = 0
+    chromosome_size = 0
     generation_size = 0
     # can be num of features
     selection_rate = 0.0
@@ -18,12 +19,16 @@ class GeneticAlgorithm():
     population = []
     ancestors = []
     descendants = []
-    def __init__(self):
-        pass
+    def __init__(self,population_size,chromosome_size,generation_size,selection_rate,mutation_rate):
+        self.population_size = population_size
+        self.chromosome_size = chromosome_size
+        self.generation_size = generation_size
+        self.selection_rate = selection_rate
+        self.mutation_rate = mutation_rate
     def getFitness(self,indv):
         return 0.0
 
-    def initialize(self):
+    def initialize(self,chromosome=None):
         pass
 
     def indvSwapPart(self,indvA,indvB,pos):
