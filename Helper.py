@@ -7,7 +7,12 @@ import random
 from decimal import Decimal
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import *
+from scipy.stats.stats import pearsonr,spearmanr
 import time
+
+
+
+
 
 def handle(path_in=None,path_out=None,poses_fix=[],poses_del=[],title=[],remove_old=True):
     ref = {}
@@ -36,6 +41,46 @@ def handle(path_in=None,path_out=None,poses_fix=[],poses_del=[],title=[],remove_
     del ref
     if remove_old:
         os.remove(path_in)
+
+def MI(data,a,b):
+    ref = {'primary':{},'secondary':{}}
+    a = list(data[a])
+    b = list(data[b])
+    sum = float(len(a))
+    for _ in range(len(a)):
+        pv = a[_]
+        sv = b[_]
+        if pv not in ref['primary']:
+            ref['primary'][pv] = {}
+            rpv = ref['primary'][pv]
+            rpv['count'] = 1.0
+            rpv['sv_count'] = {}
+            rpv['sv_count'][sv] = 1.0
+        else:
+            rpv = ref['primary'][pv]
+            rpv['count'] += 1.0
+            if sv in rpv['sv_count']:
+                rpv['sv_count'][sv] += 1.0
+            else:
+                rpv['sv_count'][sv] = 1.0
+        if sv in ref['secondary']:
+            ref['secondary'][sv] += 1.0
+        else:
+            ref['secondary'][sv] = 1.0
+    HA = 0.0
+    HAB = 0.0
+    sv_value = {}
+    for pv in ref['primary']:
+        rpv = ref['primary'][pv]
+        HA += iLog(rpv['count']/sum)
+        for sv in rpv['sv_count']:
+            if sv not in sv_value:
+                sv_value[sv] = iLog(rpv['sv_count'][sv]/ref['secondary'][sv])
+            else:
+                sv_value[sv] += iLog(rpv['sv_count'][sv]/ref['secondary'][sv])
+    for sv in sv_value:
+        HAB += ref['secondary'][sv]/sum * sv_value[sv]
+    return (HA-HAB)/HA
 
 def topK(v,k,data):
     v = -v

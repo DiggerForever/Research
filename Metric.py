@@ -9,18 +9,15 @@ def infoGain(entropy_pre,features):
     sum = 0.0
     for label in entropy_pre['value']:
         sum += entropy_pre['value'][label]['count']
-    #I_whole = 0.0
     I_feature = {}
     entropy_feature = {}
     for f in features:
         I_feature[f] = 0.0
         entropy_feature[f] = {}
     body = entropy_pre['value']
-    #entropy_whole = {}
     for label in body:
         node = body[label]
         ils = iLog(float(node['count'])/sum)
-        #I_whole += ils
         for f in node['single']:
             single = node['single'][f]
             crt_entropy = entropy_feature[f]
@@ -31,20 +28,13 @@ def infoGain(entropy_pre,features):
                     crt_entropy[s] = iLog(v)
                 else:
                     crt_entropy[s] += iLog(v)
-        # for whole in node['whole']:
-        #     v = float(node['whole'][whole])/float(entropy_pre['wev'][whole])
-        #     if whole not in entropy_whole:
-        #         entropy_whole[whole] = iLog(v)
-        #     else:
-        #         entropy_whole[whole] += iLog(v)
-    # for whole in entropy_whole:
-    #     I_whole -= float(entropy_pre['wev'][whole])/sum*entropy_whole[whole]
     for f in entropy_feature:
+        H = I_feature[f]
         for s in entropy_feature[f]:
             I_feature[f] -= float(entropy_pre['fev'][f][s])/sum*entropy_feature[f][s]
+        I_feature[f] = I_feature[f] / H
     tmp = 0.0
     for f in I_feature:
-        print(f+':'+str(I_feature[f]))
         tmp += I_feature[f]
     del I_feature
     I_feature = tmp/float(len(features))
