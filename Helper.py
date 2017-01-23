@@ -283,3 +283,53 @@ def betterSample(body=None,prob_list=None,sample_count=20,max_prob=0.6,grow_base
     print(freq_int)
     print(freq_norm)
     print(freq_norm_e)
+
+
+
+def relabelAndWeightedVoting(members=None,weight_for_member=None):
+    """
+    :param members: List of clustering members,must be in format of [{0:set(),1:set(),...},{...},...,{...}]
+    :return:
+    """
+    if weight_for_member is None:
+        weight_for_member = [1.0 for _ in range(len(members))]
+    data_leng = int(np.array([len(members[0][k]) for k in members[0]]).sum())
+    final_label_cand = []
+    for ref_member_index in range(len(members)):
+        ref_clustering_result = members[ref_member_index]
+        body = {}
+        for label in ref_clustering_result:
+            body[label] = 0.0
+        final_label = [body.copy() for _ in range(data_leng)]
+        for label in ref_clustering_result:
+            set_data_index = ref_clustering_result[label]
+            for index in set_data_index:
+                final_label[index][label] += weight_for_member[ref_member_index]
+
+        for crt_member_index in range(len(members)):
+            if crt_member_index != ref_member_index:
+                crt_clustering_result = members[crt_member_index]
+                for label in crt_clustering_result:
+                    max_jac = 0
+                    opt_label = 0
+                    set_data_index = crt_clustering_result[label]
+                    for ref_label in ref_clustering_result:
+                        jac = jaccard(ref_clustering_result[ref_label], set_data_index)
+                        if jac >= max_jac:
+                            max_jac = jac
+                            opt_label = ref_label
+                    for index in set_data_index:
+                        final_label[index][opt_label] += weight_for_member[crt_member_index]
+        print(final_label)
+        for i in range(data_leng):
+            label_weight = final_label[i]
+            max_weight = 0.0
+            opt_label = 0
+            for label in label_weight:
+                crt_weight = label_weight[label]
+                if crt_weight >= max_weight:
+                    max_weight = crt_weight
+                    opt_label = label
+            final_label[i] = opt_label
+        final_label_cand.append(final_label)
+        return final_label_cand
