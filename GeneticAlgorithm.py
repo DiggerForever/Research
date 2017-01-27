@@ -3,7 +3,7 @@ from Helper import *
 
 class GeneticAlgorithm():
     SELECTION_MODE = ['Direct', 'Sample']
-    MATING_RULE_MODE = ['Random', 'Whole', 'Single', 'CutOnRandom', 'CutWithSupervised']
+    MATING_RULE_MODE = ['Random', 'Whole_P', 'Single', 'CutOnRandom', 'CutWithSupervised']
     MATING_MODE = ['Random', 'RandomOnSplendid', 'RandomOnPoor', 'Splendid', 'Poor']
     MUTATION_RULE_MODE = ['Random', 'Whole', 'Single']
     MUTATION_MODE = ['Random', 'RandomOnSplendid', 'RandomOnPoor', 'Splendid', 'Poor']
@@ -19,12 +19,16 @@ class GeneticAlgorithm():
     population = []
     ancestors = []
     descendants = []
-    def __init__(self,population_size,chromosome_size,generation_size,selection_rate,mutation_rate):
+
+    data = None
+    fun_metric = None
+    def __init__(self,population_size,chromosome_size,generation_size,selection_rate,mutation_rate,data):
         self.population_size = population_size
         self.chromosome_size = chromosome_size
         self.generation_size = generation_size
         self.selection_rate = selection_rate
         self.mutation_rate = mutation_rate
+        self.data = data
     def getFitness(self,indv):
         return 0.0
 
@@ -81,6 +85,7 @@ class GeneticAlgorithm():
             max_fitness_a = self.getFitness(father_copy)
             max_fitness_b = self.getFitness(mother_copy)
         #2.judge as a whole
+        #PROBLEM
         if mating_rule_mode == self.MATING_RULE_MODE[1]:
             iter_num = 0
             max_fitness = (self.getFitness(father)+self.getFitness(mother))/2.0
@@ -120,10 +125,11 @@ class GeneticAlgorithm():
                     max_fitness = mid_fitness
                     max_fitness_a = crt_fitness_a
                     max_fitness_b = crt_fitness_b
+                    rst_a = [v for v in father_copy]
+                    rst_b = [v for v in mother_copy]
                 else:
                     self.indvSwapSingle(father_copy,mother_copy,_)
-            rst_a = father_copy
-            rst_b = mother_copy
+
         #4.Random cutting
         if mating_rule_mode == self.MATING_RULE_MODE[3]:
             father_copy = [v for v in father]
@@ -153,6 +159,7 @@ class GeneticAlgorithm():
                 else:
                     del rst_a
                     del rst_b
+                #Here is an alternative
                 self.indvSwapPart(father_copy,mother_copy,cut_pos)
         return rst_a,rst_b,max_fitness_a,max_fitness_b
 

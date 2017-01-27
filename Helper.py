@@ -320,7 +320,6 @@ def relabelAndWeightedVoting(members=None,weight_for_member=None):
                             opt_label = ref_label
                     for index in set_data_index:
                         final_label[index][opt_label] += weight_for_member[crt_member_index]
-        print(final_label)
         for i in range(data_leng):
             label_weight = final_label[i]
             max_weight = 0.0
@@ -332,4 +331,13 @@ def relabelAndWeightedVoting(members=None,weight_for_member=None):
                     opt_label = label
             final_label[i] = opt_label
         final_label_cand.append(final_label)
-        return final_label_cand
+    return final_label_cand
+
+def getClusteringMember(label):
+    member = {}
+    for i in range(len(label)):
+        li = label[i]
+        if li not in member:
+            member[li] = set()
+        member[li].add(i)
+    return member

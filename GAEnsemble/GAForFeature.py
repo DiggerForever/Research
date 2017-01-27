@@ -1,7 +1,6 @@
 from BaseFrameWork import *
 from GeneticAlgorithm import *
-import numpy as np
-import math
+
 
 
 class GAForFeature(GeneticAlgorithm):
