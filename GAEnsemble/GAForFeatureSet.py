@@ -10,20 +10,22 @@ class GAForFeatureSet(GeneticAlgorithm):
     mode = None
     corr_base = {}
     def __init__(self, features, population_size, chromosome_size, generation_size, selection_rate, mutation_rate, data,
-                 set_num, mode):
+                 set_num, mode, param):
         if features is None:
             features = list(data.head(n=0))
         self.features = features
         self.feature_length = len(features)
         self.mode = mode
         if self.mode == self.MODE[0]:
-            self.set_num = population_size
+            self.set_num = int(population_size*selection_rate)
             self.set_size = chromosome_size
         else:
             self.set_num = set_num
             self.set_size = int(chromosome_size / set_num)
         GeneticAlgorithm.__init__(self, population_size, chromosome_size, generation_size, selection_rate,
-                                  mutation_rate, data)
+                                  mutation_rate, data, param)
+        self.initialize()
+
         for i in range(0,self.feature_length - 1):
             for j in range(1,self.feature_length):
                 self.corr_base[self.features[i]+self.features[j]] = eval('MI')(self.data,self.features[i],self.features[j])
@@ -31,10 +33,8 @@ class GAForFeatureSet(GeneticAlgorithm):
         if self.population_size == 0:
             raise ValueError('Please specify the size of population!')
         for i in range(self.population_size):
-            if chromosome is None:
-                chromosome = [self.features[random.randint(0, self.chromosome_size - 1)] for _ in
-                              range(self.chromosome_size)]
-            self.population.append(chromosome)
+            self.population.append([self.features[random.randint(0, self.feature_length - 1)] for _ in
+                              range(self.chromosome_size)])
     def __corrBetween(self,indv_i,indv_j):
         corr_sum = 0.0
         count = 0.0
@@ -54,13 +54,48 @@ class GAForFeatureSet(GeneticAlgorithm):
                         corr_min = corr
                     count + 1.0
         return corr_sum/count,corr_min
-    def getFitness(self, indv):
-        if self.mode == self.MODE[1]:
 
-            in_corr_min = 1.0
+    def rdmTest(self):
+        mv = 0.0
+        for _ in range(1000):
+
+            v = 0.0
+            for n in range(self.set_num):
+                indv = []
+                while len(indv) < self.set_size:
+                    f = self.features[random.randint(0, len(self.features) - 1)]
+                    while f in indv:
+                        f = self.features[random.randint(0, len(self.features) - 1)]
+                    indv.append(f)
+                v += self.getFitness(indv)
+            v/= float(self.set_num)
+            if v > mv:
+                mv = v
+                print(mv)
+    def getFitness(self, indv):
+        in_corr_min = 1.0
+        in_corr_sum_avg = 0.0
+        if self.mode == self.MODE[0]:
+            in_count = 0.0
+            for i in range(0,self.set_size-1):
+                for j in range(1,self.set_size):
+                    if indv[i] + indv[j] in self.corr_base:
+                        corr = self.corr_base[indv[i] + indv[j]]
+                        in_corr_sum_avg += corr
+                        if corr < in_corr_min:
+                            in_corr_min = corr
+                        in_count += 1.0
+                    elif indv[j] + indv[i] in self.corr_base:
+                        corr = self.corr_base[indv[j] + indv[i]]
+                        in_corr_sum_avg += corr
+                        if corr < in_corr_min:
+                            in_corr_min = corr
+                        in_count += 1.0
+            in_corr_sum_avg /= in_count
+            return 1.0 - in_corr_min
+        else:
             in_corr_min_avg = 0.0
             in_corr_min_set = 1.0
-            in_corr_sum_avg = 0.0
             for _ in range(self.set_num):
                 segment = indv[_ * self.set_size:(_ + 1) * self.set_size]
                 in_count = 0.0
@@ -85,7 +120,7 @@ class GAForFeatureSet(GeneticAlgorithm):
                 in_corr_sum_avg += in_corr_sum_crt_set
                 if in_corr_sum_crt_set < in_corr_min_set:
                     in_corr_min_set = in_corr_sum_crt_set
-                if in_corr_min < in_corr_min_crt_set:
+                if in_corr_min > in_corr_min_crt_set:
                     in_corr_min = in_corr_min_crt_set
             in_corr_sum_avg /= float(self.set_num)
             in_corr_min_avg /= float(self.set_num)
@@ -116,5 +151,6 @@ class GAForFeatureSet(GeneticAlgorithm):
             out_corr_min_avg /= out_count
             out_corr_sum_avg /= out_count
             out_js_sum_avg /= out_count
+            return 1.0-in_corr_min + 1.0 - out_corr_min
 
 

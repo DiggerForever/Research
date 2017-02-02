@@ -234,7 +234,7 @@ def getVersion():
 
 def listClear(list):
     while(len(list) > 0):
-        list[0].remove()
+        list.remove(list[0])
 
 
 def betterSample(body=None,prob_list=None,sample_count=20,max_prob=0.6,grow_base=1.2):

@@ -8,6 +8,9 @@ class GeneticAlgorithm():
     MUTATION_RULE_MODE = ['Random', 'Whole', 'Single']
     MUTATION_MODE = ['Random', 'RandomOnSplendid', 'RandomOnPoor', 'Splendid', 'Poor']
 
+    param = None
+
+
     population_size = 0
     chromosome_size = 0
     generation_size = 0
@@ -22,13 +25,14 @@ class GeneticAlgorithm():
 
     data = None
     fun_metric = None
-    def __init__(self,population_size,chromosome_size,generation_size,selection_rate,mutation_rate,data):
+    def __init__(self,population_size,chromosome_size,generation_size,selection_rate,mutation_rate,data,param):
         self.population_size = population_size
         self.chromosome_size = chromosome_size
         self.generation_size = generation_size
         self.selection_rate = selection_rate
         self.mutation_rate = mutation_rate
         self.data = data
+        self.param = param
     def getFitness(self,indv):
         return 0.0
 
@@ -44,13 +48,16 @@ class GeneticAlgorithm():
         indvA[pos] = indvB[pos]
         indvB[pos] = tmp
 
-    def selection(self,mode=SELECTION_MODE[0]):
+    def selection(self):
+
+        mode = self.param['SELECTION_MODE']
         if self.selection_rate < 0.2:
             raise ValueError('The selection_rate is too small,please re-specify!')
         if mode not in self.SELECTION_MODE:
             raise ValueError('The selection mode must be in {'+','.join(self.SELECTION_MODE)+'}!')
         cand = sorted([(self.getFitness(indv),indv) for indv in self.population],reverse=True)
         fitness_prob = [v[0] for v in cand]
+        fit_v = np.array(fitness_prob).mean()
         fitness_indv = [v[1] for v in cand]
         sum = np.array(fitness_prob).sum()
         fitness_prob = [float(v)/float(sum) for v in fitness_prob]
@@ -68,8 +75,8 @@ class GeneticAlgorithm():
                             tmp[i] = 1
             iters = tmp.items() if getVersion() > 2 else tmp.iteritems()
             self.ancestors = [fitness_indv[_[0]] for _ in sorted(iters,key=lambda b:b[1],reverse=True)[:retain_size]]
-
-    def matingRule(self,father,mother,param,mating_rule_mode):
+        return fit_v
+    def matingRule(self,father,mother,mating_rule_param,mating_rule_mode):
         rst_a = []
         rst_b = []
         max_fitness_a = 0.0
@@ -80,17 +87,19 @@ class GeneticAlgorithm():
             father_copy = [v for v in father]
             mother_copy = [v for v in mother]
             for _ in range(len(father)):
-                if random.random() <= param:
+                if random.random() <= mating_rule_param:
                     self.indvSwapSingle(father_copy,mother_copy,_)
             max_fitness_a = self.getFitness(father_copy)
             max_fitness_b = self.getFitness(mother_copy)
+            rst_a = [v for v in father_copy]
+            rst_b = [v for v in mother_copy]
         #2.judge as a whole
         #PROBLEM
         if mating_rule_mode == self.MATING_RULE_MODE[1]:
             iter_num = 0
             max_fitness = (self.getFitness(father)+self.getFitness(mother))/2.0
-            while iter_num < param:
-                iter_num += 1
+            while iter_num < mating_rule_param:
+
                 father_copy = [v for v in father]
                 mother_copy = [v for v in mother]
                 for _ in range(len(father)):
@@ -101,6 +110,7 @@ class GeneticAlgorithm():
                 mid_fitness = float(crt_fitness_a)+float(crt_fitness_b)
                 mid_fitness /= 2.0
                 if mid_fitness >= max_fitness:
+                    iter_num += 1
                     max_fitness = mid_fitness
                     del rst_a
                     del rst_b
@@ -115,6 +125,10 @@ class GeneticAlgorithm():
         if mating_rule_mode == self.MATING_RULE_MODE[2]:
             father_copy = [v for v in father]
             mother_copy = [v for v in mother]
+
+            rst_a = [v for v in father_copy]
+            rst_b = [v for v in mother_copy]
+
             max_fitness = (self.getFitness(father_copy)+self.getFitness(mother_copy))/2.0
             for _ in range(len(father_copy)):
                 self.indvSwapSingle(father_copy,mother_copy,_)
@@ -144,6 +158,10 @@ class GeneticAlgorithm():
         if mating_rule_mode == self.MATING_RULE_MODE[4]:
             father_copy = [v for v in father]
             mother_copy = [v for v in mother]
+
+            rst_a = [v for v in father_copy]
+            rst_b = [v for v in mother_copy]
+
             max_fitness = (self.getFitness(father_copy)+self.getFitness(mother_copy))/2.0
             for cut_pos in range(1,leng-1):
                 self.indvSwapPart(father_copy,mother_copy,cut_pos)
@@ -156,14 +174,14 @@ class GeneticAlgorithm():
                     rst_b = [v for v in mother_copy]
                     max_fitness_a = crt_fitness_a
                     max_fitness_b = crt_fitness_b
-                else:
-                    del rst_a
-                    del rst_b
                 #Here is an alternative
                 self.indvSwapPart(father_copy,mother_copy,cut_pos)
         return rst_a,rst_b,max_fitness_a,max_fitness_b
 
-    def mating(self,mating_mode=MATING_MODE[0],mating_rule_mode=None,mating_rule_param=''):
+    def mating(self):
+        mating_mode = self.param['MATING_MODE']
+        mating_rule_param = self.param['MATING_RULE_PARAM']
+        mating_rule_mode = self.param['MATING_RULE_MODE']
         if mating_mode not in self.MATING_MODE:
             raise ValueError('The mating mode must be in {'+','.join(self.MATING_MODE)+'}')
         random_or_supervised = True
@@ -171,8 +189,8 @@ class GeneticAlgorithm():
         if mating_mode == self.MATING_MODE[0]:
             father_start = 0
             mother_start = 0
-            father_end = len(self.ancestors)
-            mother_end = len(self.ancestors)
+            father_end = len(self.ancestors)-1
+            mother_end = len(self.ancestors)-1
         #random mating from splendid ancestors
         if mating_mode == self.MATING_MODE[1]:
             father_start = 0
@@ -183,12 +201,12 @@ class GeneticAlgorithm():
         if mating_mode == self.MATING_MODE[2]:
             father_start = int(len(self.ancestors)/2)
             mother_start = int(len(self.ancestors)/2)
-            father_end = len(self.ancestors)
-            mother_end = len(self.ancestors)
+            father_end = len(self.ancestors)-1
+            mother_end = len(self.ancestors)-1
         if mating_mode in [self.MATING_MODE[0],self.MATING_MODE[1],self.MATING_MODE[2]]:
             while len(self.ancestors)+len(self.descendants) < self.population_size:
-                father_pos = random.randint(0,len(self.ancestors))
-                mother_pos = random.randint(0,len(self.ancestors))
+                father_pos = random.randint(father_start,father_end)
+                mother_pos = random.randint(mother_start,mother_end)
                 if father_pos != mother_pos:
                     child_a,child_b,c_a_fitness,c_b_fitness = self.matingRule(self.ancestors[father_pos],self.ancestors[mother_pos],mating_rule_param,mating_rule_mode)
                     self.descendants.append(child_a)
@@ -218,8 +236,12 @@ class GeneticAlgorithm():
             self.descendants = descendants[:retain_size]
         listClear(self.population)
         self.population = self.ancestors + self.descendants
+        # print(self.ancestors)
+        # print(self.descendants)
+        # exit(-5)
         listClear(self.ancestors)
         listClear(self.descendants)
+
 
     def geneMutation(self, chromosome=None,supervised=False):
         pass
@@ -248,7 +270,10 @@ class GeneticAlgorithm():
             self.geneMutation(chromosome,True)
         return chromosome
 
-    def mutation(self,mutation_mode=None,mutation_rule_mode=0,mutation_rule_param=''):
+    def mutation(self):
+        mutation_mode = self.param['MUTATION_MODE']
+        mutation_rule_mode = self.param['MUTATION_RULE_MODE']
+        mutation_rule_param = self.param['MUTATION_RULE_PARAM']
         if mutation_mode not in self.MUTATION_MODE:
             raise ValueError('mutation_mode must be in {'+','.join(self.MUTATION_MODE)+'}')
         #random mutation
@@ -268,7 +293,7 @@ class GeneticAlgorithm():
             mutation_limit = int(self.population_size * self.mutation_rate)
             while mutation_num < mutation_limit:
                 mutation_num += 1
-                chromosome_pos = random.randint(0,len(self.population))
+                chromosome_pos = random.randint(0,len(self.population)-1)
                 self.population[chromosome_pos] = self.mutationRule(chromosome=self.population[chromosome_pos],mutation_rule_param=mutation_rule_param,mutation_rule_mode=mutation_rule_mode)
         #supervised mating
         #1.combination of splendid population
@@ -282,3 +307,17 @@ class GeneticAlgorithm():
         if mutation_mode in [self.MUTATION_MODE[3],self.MUTATION_MODE[4]]:
             for chromosome_pos in range(start,end):
                 self.population[chromosome_pos] = self.mutationRule(chromosome=self.population[chromosome_pos],mutation_rule_param=mutation_rule_param,mutation_rule_mode=mutation_rule_mode)
+
+    def execute(self):
+        iter_num = 0
+        old_fit = 0
+        while iter_num < self.generation_size:
+            crt_fit = self.selection()
+            self.mating()
+            self.mutation()
+            iter_num += 1
+            print('Generation '+str(iter_num)+':'+str(crt_fit))
+            if crt_fit == old_fit:
+                break
+            else:
+                old_fit = crt_fit
