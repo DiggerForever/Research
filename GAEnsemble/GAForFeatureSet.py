@@ -9,32 +9,30 @@ class GAForFeatureSet(GeneticAlgorithm):
     set_size = 0
     mode = None
     corr_base = {}
-    def __init__(self, features, population_size, chromosome_size, generation_size, selection_rate, mutation_rate, data,
-                 set_num, mode, param):
+    def __init__(self, features, data, set_num, mode, param):
         if features is None:
             features = list(data.head(n=0))
         self.features = features
         self.feature_length = len(features)
         self.mode = mode
         if self.mode == self.MODE[0]:
-            self.set_num = int(population_size*selection_rate)
-            self.set_size = chromosome_size
+            self.set_num = int(param['POPULATION_SIZE']*param['SELECTION_RATE'])
+            self.set_size = param['CHROMOSOME_SIZE']
         else:
             self.set_num = set_num
-            self.set_size = int(chromosome_size / set_num)
-        GeneticAlgorithm.__init__(self, population_size, chromosome_size, generation_size, selection_rate,
-                                  mutation_rate, data, param)
+            self.set_size = int(param['CHROMOSOME_SIZE'] / set_num)
+        GeneticAlgorithm.__init__(self, data, param)
         self.initialize()
 
         for i in range(0,self.feature_length - 1):
             for j in range(1,self.feature_length):
                 self.corr_base[self.features[i]+self.features[j]] = eval('MI')(self.data,self.features[i],self.features[j])
     def initialize(self, chromosome=None):
-        if self.population_size == 0:
+        if self.param['POPULATION_SIZE'] == 0:
             raise ValueError('Please specify the size of population!')
-        for i in range(self.population_size):
+        for i in range(self.param['POPULATION_SIZE']):
             self.population.append([self.features[random.randint(0, self.feature_length - 1)] for _ in
-                              range(self.chromosome_size)])
+                              range(self.param['CHROMOSOME_SIZE'])])
     def __corrBetween(self,indv_i,indv_j):
         corr_sum = 0.0
         count = 0.0
@@ -72,21 +70,45 @@ class GAForFeatureSet(GeneticAlgorithm):
             if v > mv:
                 mv = v
                 print(mv)
-    def getFitness(self, indv):
+    def geneMutation(self, chromosome=None,supervised=False):
+        if self.mode == self.MODE[0]:
+            if supervised:
+                max_fitness = self.getFitness(chromosome)
+                for i in range(len(chromosome)):
+                    of = chromosome[i]
+                    for j in range(self.feature_length):
+                        nf = self.features[j]
+                        if nf != of:
+                            chromosome[i] = nf
+                            new_fitness = self.getFitness(chromosome)
+                            if new_fitness > max_fitness:
+                                max_fitness = new_fitness
+                            else:
+                                chromosome[i] = of
+            else:
+                for i in range(len(chromosome)):
+                    of = chromosome[i]
+                    if random.random() < self.param['MUTATION_PROB']:
+                        nf = self.features[random.randint(0,self.feature_length-1)]
+                        while nf == of:
+                            nf = self.features[random.randint(0, self.feature_length - 1)]
+                        chromosome[i] = nf
+
+    def getFitness(self, chromosome=None):
         in_corr_min = 1.0
         in_corr_sum_avg = 0.0
         if self.mode == self.MODE[0]:
             in_count = 0.0
             for i in range(0,self.set_size-1):
                 for j in range(1,self.set_size):
-                    if indv[i] + indv[j] in self.corr_base:
-                        corr = self.corr_base[indv[i] + indv[j]]
+                    if chromosome[i] + chromosome[j] in self.corr_base:
+                        corr = self.corr_base[chromosome[i] + chromosome[j]]
                         in_corr_sum_avg += corr
                         if corr < in_corr_min:
                             in_corr_min = corr
                         in_count += 1.0
-                    elif indv[j] + indv[i] in self.corr_base:
-                        corr = self.corr_base[indv[j] + indv[i]]
+                    elif chromosome[j] + chromosome[i] in self.corr_base:
+                        corr = self.corr_base[chromosome[j] + chromosome[i]]
                         in_corr_sum_avg += corr
                         if corr < in_corr_min:
                             in_corr_min = corr
@@ -97,7 +119,7 @@ class GAForFeatureSet(GeneticAlgorithm):
             in_corr_min_avg = 0.0
             in_corr_min_set = 1.0
             for _ in range(self.set_num):
-                segment = indv[_ * self.set_size:(_ + 1) * self.set_size]
+                segment = chromosome[_ * self.set_size:(_ + 1) * self.set_size]
                 in_count = 0.0
                 in_corr_sum_crt_set = 0.0
                 in_corr_min_crt_set = 1.0
@@ -133,9 +155,9 @@ class GAForFeatureSet(GeneticAlgorithm):
             out_js_min = 1.0
             out_count = 0.0
             for i in range(0,self.set_num-1):
-                segment_i = indv[i*self.set_size:(i+1)*self.set_size]
+                segment_i = chromosome[i*self.set_size:(i+1)*self.set_size]
                 for j in range(1,self.set_num):
-                    segment_j = indv[j*self.set_size:(j+1)*self.set_size]
+                    segment_j = chromosome[j*self.set_size:(j+1)*self.set_size]
                     out_count +=1.0
                     s,m = self.__corrBetween(segment_i,segment_j)
                     js = jaccard(set(segment_i),set(segment_j))
