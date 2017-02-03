@@ -5,7 +5,6 @@ class GeneticAlgorithm():
     SELECTION_MODE = ['Direct', 'Sample']
     MATING_RULE_MODE = ['Random', 'Whole_P', 'Single', 'CutOnRandom', 'CutWithSupervised']
     MATING_MODE = ['Random', 'RandomOnSplendid', 'RandomOnPoor', 'Splendid', 'Poor']
-    MUTATION_RULE_MODE = ['Random', 'Supervised']
     MUTATION_MODE = ['Random', 'RandomOnSplendid', 'RandomOnPoor']
 
     param = None
@@ -49,6 +48,7 @@ class GeneticAlgorithm():
         fit_v = np.array(splendid_fitness).mean()
         splendid_indv = [v[1] for v in cand]
         sum = np.array(splendid_fitness).sum()
+        sum = 1.0 if sum == 0.0 else sum
         splendid_prob = [float(v)/float(sum) for v in splendid_fitness]
         retain_size = int(self.param['SELECTION_RATE'] * self.param['POPULATION_SIZE'])
         if mode == self.SELECTION_MODE[0]:
@@ -90,8 +90,9 @@ class GeneticAlgorithm():
         #PROBLEM
         if mating_rule_mode == self.MATING_RULE_MODE[1]:
             iter_num = 0
+            iter_limit = 0
             max_fitness = (self.getFitness(father)+self.getFitness(mother))/2.0
-            while iter_num < mating_rule_param:
+            while iter_num < 1:
 
                 father_copy = [v for v in father]
                 mother_copy = [v for v in mother]
@@ -111,8 +112,13 @@ class GeneticAlgorithm():
                     rst_b = [v for v in mother_copy]
                     max_fitness_a = crt_fitness_a
                     max_fitness_b = crt_fitness_b
+                elif iter_limit == 200:
+                    rst_a = [v for v in father_copy]
+                    rst_b = [v for v in mother_copy]
+                    break
                 del father_copy
                 del mother_copy
+                iter_limit += 1
 
         #3.judge one by one
         if mating_rule_mode == self.MATING_RULE_MODE[2]:
@@ -257,10 +263,12 @@ class GeneticAlgorithm():
         # exit(-5)
         listClear(self.ancestors)
         listClear(self.descendants)
+        listClear(self.ancestors_fitness)
+        listClear(self.descendants_fitness)
 
 
     def geneMutation(self, chromosome=None,supervised=False):
-        return None
+        pass
 
     def mutation(self):
         mutation_mode = self.param['MUTATION_MODE']
@@ -281,7 +289,10 @@ class GeneticAlgorithm():
         for _ in range(self.param['POPULATION_SIZE']):
             self.geneMutation(self.population[_],self.param['MUTATION_SUPERVISED'])
 
-    def execute(self):
+    def getResult(self):
+        return None
+
+    def execute(self,debug=False):
         iter_num = 0
         old_fit = 0
         ident_count = 0
@@ -293,8 +304,12 @@ class GeneticAlgorithm():
             self.mutation()
 
             if crt_fit >= old_fit:
-                old_fit = crt_fit
-                iter_num += 1
                 if crt_fit == old_fit:
                     ident_count += 1
-                print('Generation ' + str(iter_num) + ':' + str(crt_fit))
+                else:
+                    ident_count = 0
+                old_fit = crt_fit
+                iter_num += 1
+
+                if debug:
+                    print('Generation ' + str(iter_num) + ':' + str(crt_fit))
