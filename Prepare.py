@@ -113,12 +113,20 @@ def preHandle(data_con=None,data_dis=None,features=None,label=None):
                 #so complicated
                 for fai in range(0,feature_leng):
                     fa = features[fai]
-                    cr_l['center'][fai] += crt_row_value_con[fa]
+                    vfa = crt_row_value_con[fa]
+                    cr_l['center'][fai] += vfa
+                    if cr_l['min'][fai] >= vfa:
+                        cr_l['min'][fai] = vfa
+                    if cr_l['max'][fai] <= vfa:
+                        cr_l['max'][fai] = vfa
                     for fbj in range(0,feature_leng):
                         fb = features[fbj]
                         cr_l['cov'][fai][fbj] += crt_row_value_con[fa]*crt_row_value_con[fb]
             else:
-                cov_pre[label_value] = {'cov':np.array([[0.0 for _i in range(feature_leng)] for _j in range(feature_leng)]),'count':1.0,'data_pos':[i],'center':np.array([0.0 for _ in range(feature_leng)])}
+                cov_pre[label_value] = {'cov':np.array([[0.0 for _i in range(feature_leng)] for _j in range(feature_leng)]),
+                                        'count':1.0,'data_pos':[i],'center':np.array([0.0 for _ in range(feature_leng)]),
+                                        'min':np.array([float('Inf') for _ in range(feature_leng)]),
+                                        'max':np.array([0.0 for _ in range(feature_leng)])}
                 #cov_pre[label_value] = {'cov':np.array([0.0 for _ in range(int(symt_leng))]),'count':1.0,'data_pos':[i],'center':np.array([0.0 for _ in range(feature_leng)])}
                 cr_l = cov_pre[label_value]
                 for fai in range(0,feature_leng):

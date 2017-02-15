@@ -123,22 +123,60 @@ def SDBW(data=None,cov_pre=None,feature_leng=None):
         sdbw = 100
     return sdbw
 
-def entropyWithoutLabel(data=None,alpha=1.0):
+def entropyWithoutLabel(data=None,alpha=1.0,mode='DIS'):
     """
         Clustering metric based on entropy without label info
     """
+    features = list(data.head(n=0))
     leng = len(data)
     E = 0
-    for i in range(0, leng):
-        for j in range(0, leng):
-            if j != i:
-                Sij = dis(data, i, j)/alpha
-                if Sij == 1.0:
-                    Sij -= 0.000001
-                if Sij == 0.0:
-                    Sij += 0.000001
-                E += Sij * math.log(Sij) + (1 - Sij) * math.log(1 - Sij)
-    return -E
+    if mode == 'DIS':
+        for i in range(0, leng):
+            di = data.iloc[i]
+            for j in range(0, leng):
+                if j != i:
+                    dj = data.iloc[j]
+                    Sij = dis(di, dj)/2.0
+                    if Sij == 1.0:
+                        Sij -= 0.000001
+                    if Sij == 0.0:
+                        Sij += 0.000001
+                    E += math.exp(Sij * math.log(Sij) + (1 - Sij) * math.log(1 - Sij))
+    elif mode == 'CON_SUM':
+        for i in range(0, leng):
+            di = data.iloc[i]
+            for j in range(0, leng):
+                if j != i:
+                    dj = data.iloc[j]
+                    Sij = 0.0
+                    nf = 0.0
+                    for f in features:
+                        Sij += math.fabs(di[f] - dj[f])
+                        nf += 1.0
+                    Sij/=nf
+                    if Sij == 1.0:
+                        Sij -= 0.000001
+                    if Sij == 0.0:
+                        Sij += 0.000001
+                    E += math.exp(Sij * math.log(Sij) + (1 - Sij) * math.log(1 - Sij))
+    elif mode == 'DIS_SUM':
+        for i in range(0, leng):
+            di = data.iloc[i]
+            for j in range(0, leng):
+                if j != i:
+                    dj = data.iloc[j]
+                    Sij = 0.0
+                    nf = 0.0
+                    for f in features:
+                        Sij += 1.0 if math.fabs(di[f] - dj[f]) < 0.1 else 0.0
+                        nf += 1.0
+                    Sij/=nf
+                    if Sij == 1.0:
+                        Sij -= 0.000001
+                    if Sij == 0.0:
+                        Sij += 0.000001
+                    E += math.exp(Sij * math.log(Sij) + (1 - Sij) * math.log(1 - Sij))
+    return E
 
 #TODO Haven't been tested
 def HypothesisTest(cov_pre=None,feature_leng=0,bunch=False):
@@ -280,7 +318,8 @@ def divergence(entropy_pre,features,data_leng,fun_measure):
 
 
 def RELIEF(cov_pre=None,data=None,k=0,whole=True):
-
+    features = list(data.head(n=0))
+    feature_leng = len(features)
     w = 0.0
     dis_assist = {}
     for label_crt in cov_pre:
@@ -291,8 +330,8 @@ def RELIEF(cov_pre=None,data=None,k=0,whole=True):
                 nn_in = []
                 nn_out = []
             else:
-                nn_in = [[] for _ in range(len(crt_data))]
-                nn_out = [[] for _ in range(len(crt_data))]
+                nn_in = [[] for _ in range(feature_leng)]
+                nn_out = [[] for _ in range(feature_leng)]
             for j_in in data_pos_crt:
                 if j_in != i_in:
                     if whole:
@@ -322,12 +361,92 @@ def RELIEF(cov_pre=None,data=None,k=0,whole=True):
                             for _ in range(len(crt_data)):
                                 topK(math.fabs(crt_data[_]-(data[i_out])[_]),k,nn_out[_])
             if whole:
+                nn_in = sorted([-x for x in nn_in])
+                nn_out = sorted([-x for x in nn_out])
                 w += np.array(nn_in).mean() - np.array(nn_out).mean()
             else:
                 ww = 0.0
                 for _ in range(len(crt_data)):
+                    nn_in[_] = [-x for x in nn_in[_]]
+                    nn_out[_] = [-x for x in nn_out[_]]
                     ww += np.array(nn_in[_]).mean() - np.array(nn_out[_]).mean()
                 ww /= float(len(crt_data))
                 w += ww
     w /= float(len(data))
     return w
+
+
+
+def _freq(freq_i,freq_j):
+    value = 0.0
+    if len(freq_i) >= len(freq_j):
+        n_f = float(len(freq_i))
+        for v in freq_i:
+            if v in freq_j:
+               value += math.fabs(freq_i[v]-freq_j[v])
+            else:
+                value += freq_i[v]
+    else:
+        n_f = float(len(freq_j))
+        for v in freq_j:
+            if v in freq_i:
+                value += math.fabs(freq_i[v]-freq_j[v])
+            else:
+                value += freq_j[v]
+    return value/n_f
+def freqDiffer(entropy_pre):
+    value = entropy_pre['value']
+    n_c = 0.0
+    rst = 0.0
+    for cluster_i in value:
+        single_i = value[cluster_i]['single']
+        for cluster_j in value:
+            if cluster_i != cluster_j:
+                n_c += 1.0
+                single_j = value[cluster_j]['single']
+                n_f = 0.0
+                v_f = 0.0
+                for f in single_i:
+                    fi = single_i[f]
+                    fj = single_j[f]
+                    v_f += _freq(fi,fj)
+                v_f /= n_f
+                rst += v_f
+    return rst/n_c
+
+
+
+def basicStatisticDiffer(cov_pre):
+    n_c = 0.0
+    differ = 0.0
+    var = 0.0
+    for cluster_i in cov_pre:
+        cov_i = cov_pre[cluster_i]
+        min_i = cov_i['min']
+        max_i = cov_i['max']
+        avg_i = cov_i['avg']
+        var_i = cov_i['cov']
+        var_f = 0.0
+        for f in min_i:
+            var_f += var_i[f][f]
+        var_f /= float(len(min_i))
+        var += var_f
+        for cluster_j in cov_pre:
+            if cluster_i != cluster_j:
+                n_c += 1.0
+                cov_j = cov_pre[cluster_j]
+                min_j = cov_j['min']
+                max_j = cov_j['max']
+                avg_j = cov_j['avg']
+                v_s = 0.0
+                n_f = 0.0
+                for f in min_i:
+                    v_s += (math.fabs(min_i[f]-min_j[f])+math.fabs(max_i[f]-max_j[f])+math.fabs(avg_i[f]-avg_j[f]))/3.0
+                    n_f += 1.0
+                v_s /= n_f
+                differ += v_s
+    var /= float(len(cov_pre))
+    differ /= n_c
+    return differ / var
+
+

@@ -1,16 +1,20 @@
 
 from Helper import *
+from Prepare import *
+from Metric import *
 
 class GeneticAlgorithm():
     SELECTION_MODE = ['Direct', 'Sample']
-    MATING_RULE_MODE = ['Random', 'Whole_P', 'Single', 'CutOnRandom', 'CutWithSupervised']
+    MATING_RULE_MODE = ['Random', 'Whole_P', 'Single', 'CutOnRandom', 'CutWithSupervised','Segment']
     MATING_MODE = ['Random', 'RandomOnSplendid', 'RandomOnPoor', 'Splendid', 'Poor']
-    MUTATION_MODE = ['Random', 'RandomOnSplendid', 'RandomOnPoor']
+    MUTATION_MODE = ['All', 'Splendid', 'Poor','ImportanceSample']
 
     param = None
     sample_count = 10000
 
     population = []
+    fitness = []
+    fitness_axu = []
     ancestors = []
     ancestors_fitness = []
     descendants = []
@@ -18,15 +22,23 @@ class GeneticAlgorithm():
 
     data = None
     fun_metric = None
+    set_num = 0
+    set_size = 0
+
     def __init__(self,data,param):
         self.data = data
         self.param = param
     def getFitness(self,indv):
         return 0.0
 
-    def initialize(self,chromosome=None):
+    def initialize(self,population=None):
         pass
 
+    def indvSwapSegment(self,indvA,indvB,pos,skip):
+        segment_a = indvA[(pos * self.set_size+skip):((pos + 1) * self.set_size+skip)]
+        segment_b = indvB[(pos * self.set_size+skip):((pos + 1) * self.set_size+skip)]
+        indvB[(pos * self.set_size + skip):((pos + 1) * self.set_size + skip)] = segment_a
+        indvA[(pos * self.set_size + skip):((pos + 1) * self.set_size + skip)] = segment_b
     def indvSwapPart(self,indvA,indvB,pos):
         left = indvA[:pos]
         indvA[:pos] = indvB[:pos]
@@ -54,7 +66,7 @@ class GeneticAlgorithm():
         if mode == self.SELECTION_MODE[0]:
             self.ancestors = splendid_indv[:retain_size]
             self.ancestors_fitness = splendid_fitness[:retain_size]
-        if mode == self.SELECTION_MODE[1]:
+        elif mode == self.SELECTION_MODE[1]:
             tmp = {}
             for _ in range(self.sample_count):
                 for i in range(len(splendid_prob)):
@@ -143,6 +155,7 @@ class GeneticAlgorithm():
                 else:
                     self.indvSwapSingle(father_copy,mother_copy,_)
 
+
         #4.Random cutting
         if mating_rule_mode == self.MATING_RULE_MODE[3]:
             father_copy = [v for v in father]
@@ -175,6 +188,17 @@ class GeneticAlgorithm():
                     max_fitness_b = crt_fitness_b
                 #Here is an alternative
                 self.indvSwapPart(father_copy,mother_copy,cut_pos)
+        if mating_rule_mode == self.MATING_RULE_MODE[5]:
+            pos = random.randint(0,self.set_num-1)
+            skip = random.randint(0,self.set_size) if pos != self.set_num-1 else 0
+            father_copy = [v for v in father]
+            mother_copy = [v for v in mother]
+            self.indvSwapSegment(father_copy, mother_copy, pos,skip)
+            rst_a = [v for v in father_copy]
+            rst_b = [v for v in mother_copy]
+            max_fitness_a = self.getFitness(father_copy)
+            max_fitness_b = self.getFitness(mother_copy)
+
         return rst_a,rst_b,max_fitness_a,max_fitness_b
 
     def mating(self):
@@ -238,7 +262,7 @@ class GeneticAlgorithm():
             self.descendants = descendants[:retain_size]
             self.descendants_fitness = fitness[:retain_size]
         listClear(self.population)
-        self.population = []
+        listClear(self.fitness)
 
         #Merge two sorted list
         len_a = len(self.ancestors_fitness)
@@ -249,15 +273,19 @@ class GeneticAlgorithm():
             if crt_a_pos < len_a and crt_d_pos < len_d:
                 if self.ancestors_fitness[crt_a_pos] > self.descendants_fitness[crt_d_pos]:
                     self.population.append(self.ancestors[crt_a_pos])
+                    self.fitness.append(self.ancestors_fitness[crt_a_pos])
                     crt_a_pos += 1
                 else:
                     self.population.append(self.descendants[crt_d_pos])
+                    self.fitness.append(self.descendants_fitness[crt_d_pos])
                     crt_d_pos += 1
             else:
                 if len_a > crt_a_pos:
                     self.population += self.ancestors[(crt_a_pos-len_a):]
+                    self.fitness += self.ancestors_fitness[(crt_a_pos-len_a):]
                 else:
                     self.population += self.descendants[(crt_d_pos-len_d):]
+                    self.fitness += self.descendants_fitness[(crt_d_pos-len_d):]
         # print(self.ancestors)
         # print(self.descendants)
         # exit(-5)
@@ -267,27 +295,36 @@ class GeneticAlgorithm():
         listClear(self.descendants_fitness)
 
 
-    def geneMutation(self, chromosome=None,supervised=False):
+    def geneMutation(self, chromosome=None):
         pass
 
     def mutation(self):
         mutation_mode = self.param['MUTATION_MODE']
         if mutation_mode not in self.MUTATION_MODE:
             raise ValueError('mutation_mode must be in {'+','.join(self.MUTATION_MODE)+'}')
-        #random mutation
+        #All mutating
         if mutation_mode == self.MUTATION_MODE[0]:
-            start = 0
-            end = len(self.population)
-        #random mutation from splendid population
+            for _ in range(self.param['POPULATION_SIZE']):
+                self.geneMutation(self.population[_])
+        #splendid population
         if mutation_mode == self.MUTATION_MODE[1]:
             start = 0
             end = int(len(self.population)/2)
-        #random mutation from poor population
+            for _ in range(start,end):
+                self.geneMutation(self.population[_])
+        #poor population
         if mutation_mode == self.MUTATION_MODE[2]:
             start = int(len(self.population)/2)
             end = len(self.population)
-        for _ in range(self.param['POPULATION_SIZE']):
-            self.geneMutation(self.population[_],self.param['MUTATION_SUPERVISED'])
+            for _ in range(start,end):
+                self.geneMutation(self.population[_])
+        #importance sample
+        if mutation_mode == self.MUTATION_MODE[3]:
+            s = np.array(self.fitness).sum()
+            for _ in range(len(self.fitness)):
+                if random.random() <= self.fitness[_]/s:
+                    self.geneMutation(self.population[_])
+
 
     def getResult(self):
         return None

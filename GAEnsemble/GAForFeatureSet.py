@@ -5,8 +5,7 @@ class GAForFeatureSet(GeneticAlgorithm):
     MODE = ['IN', 'OUT']
     features = []
     feature_length = 0
-    set_num = 0
-    set_size = 0
+
     mode = None
     corr_base = {}
     def __init__(self, features, data, mode, param):
@@ -23,7 +22,6 @@ class GAForFeatureSet(GeneticAlgorithm):
             self.set_size = int(param['CHROMOSOME_SIZE'] / self.set_num)
         GeneticAlgorithm.__init__(self, data, param)
         self.initialize()
-
         for i in range(0,self.feature_length - 1):
             for j in range(1,self.feature_length):
                 self.corr_base[self.features[i]+self.features[j]] = eval('MI')(self.data,self.features[i],self.features[j])
@@ -70,29 +68,28 @@ class GAForFeatureSet(GeneticAlgorithm):
             if v > mv:
                 mv = v
                 print(mv)
-    def geneMutation(self, chromosome=None,supervised=False):
-        if self.mode == self.MODE[0]:
-            if supervised:
-                max_fitness = self.getFitness(chromosome)
-                for i in range(len(chromosome)):
-                    of = chromosome[i]
-                    for j in range(self.feature_length):
-                        nf = self.features[j]
-                        if nf not in chromosome:
-                            chromosome[i] = nf
-                            new_fitness = self.getFitness(chromosome)
-                            if new_fitness > max_fitness:
-                                max_fitness = new_fitness
-                            else:
-                                chromosome[i] = of
-            else:
-                for i in range(len(chromosome)):
-                    of = chromosome[i]
-                    if random.random() < self.param['MUTATION_PROB']:
-                        nf = self.features[random.randint(0,self.feature_length-1)]
-                        while nf == of:
-                            nf = self.features[random.randint(0, self.feature_length - 1)]
+    def geneMutation(self, chromosome=None):
+        if self.param['GENE_MODE'] == 'Supervised':
+            max_fitness = self.getFitness(chromosome)
+            for i in range(len(chromosome)):
+                of = chromosome[i]
+                for j in range(self.feature_length):
+                    nf = self.features[j]
+                    if nf not in chromosome:
                         chromosome[i] = nf
+                        new_fitness = self.getFitness(chromosome)
+                        if new_fitness > max_fitness:
+                            max_fitness = new_fitness
+                        else:
+                            chromosome[i] = of
+        elif self.param['GENE_MODE'] == 'Random':
+            for i in range(len(chromosome)):
+                of = chromosome[i]
+                if random.random() < self.param['MUTATION_PROB']:
+                    nf = self.features[random.randint(0,self.feature_length-1)]
+                    while nf == of:
+                        nf = self.features[random.randint(0, self.feature_length - 1)]
+                    chromosome[i] = nf
 
     def getFitness(self, chromosome=None):
         in_corr_max = 0.0
@@ -171,11 +168,11 @@ class GAForFeatureSet(GeneticAlgorithm):
                     out_js_sum_avg += js
                     out_corr_max_avg += m
                     out_corr_sum_avg += s
-                    if out_js_max < js:
+                    if out_js_max < js and js < 1.0:
                         out_js_max = js
-                    if out_corr_max < m:
+                    if out_corr_max < m and m < 1.0:
                         out_corr_max = m
-                    if out_corr_max_set < s:
+                    if out_corr_max_set < s and s < 1.0:
                         out_corr_max_set = s
             if out_count == 0.0:
                 out_count = 1.0
@@ -201,7 +198,7 @@ class GAForFeatureSet(GeneticAlgorithm):
                 out_value = out_js_sum_avg
             elif self.param['FITNESS_OUT'] == 'JS_MAX':
                 out_value = out_js_max
-            rst = 1.0 - in_value + 1.0 - out_value
+            rst = 1.0 - out_value
             return rst
 
     def getResult(self):

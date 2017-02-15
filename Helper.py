@@ -4,15 +4,20 @@ import os
 import platform
 import numpy as np
 import random
+import pickle
 from decimal import Decimal
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import *
 from scipy.stats.stats import pearsonr,spearmanr
 import time
 
+def isFileExist(file):
+    return os.path.exists(file)
 
-
-
+def exObject(data,file):
+    pickle.dump(data,file)
+def imObject(file):
+    return pickle.load(file)
 
 def handle(path_in=None,path_out=None,poses_fix=[],poses_del=[],title=[],remove_old=True):
     ref = {}
@@ -42,10 +47,11 @@ def handle(path_in=None,path_out=None,poses_fix=[],poses_del=[],title=[],remove_
     if remove_old:
         os.remove(path_in)
 
-def MI(data,a,b):
+def MI(data=None,a=None,b=None):
     ref = {'primary':{},'secondary':{}}
-    a = list(data[a])
-    b = list(data[b])
+    if data is not None:
+        a = list(data[a])
+        b = list(data[b])
     sum = float(len(a))
     for _ in range(len(a)):
         pv = a[_]
@@ -85,11 +91,11 @@ def MI(data,a,b):
 def topK(v,k,data):
     v = -v
     if(len(data)<k):
-        heapq.heappush(data,-v)
+        heapq.heappush(data,v)
     else:
         ts = data[0]
         if v > ts:
-            heapq.heapreplace(data,-v)
+            heapq.heapreplace(data,v)
 
 def scale(data,title):
     rst = []
@@ -97,9 +103,9 @@ def scale(data,title):
         rst.append(data[t].max()-data[t].min())
     return rst
 
-def dis(data,i,j,norm=False):
-    N = data.max()-data.min() if norm else 1.0
-    first = (data[i]-data[j])/N
+def dis(di,dj,norm=None):
+    N = norm if norm else 1.0
+    first = (di -dj)/N
     second = first * first
     third = second.sum()
     return math.sqrt(third)
@@ -237,52 +243,54 @@ def listClear(list):
         list.remove(list[0])
 
 
-def betterSample(body=None,prob_list=None,sample_count=20,max_prob=0.6,grow_base=1.2):
-    d = {}
-    size = len(prob_list)
-    sum = 0.0
-    for _ in range(sample_count):
+def betterSample(body=None,prob_list=None,sample_count=40):
+    if False:
+        d = {}
+        size = len(prob_list)
+        sum = 0.0
+        prob_sum = np.array(prob_list).sum()
+        freq_norm = []
         for i in range(len(prob_list)):
-            if random.uniform(0,1) < prob_list[i]:
-                if body[i] in d:
-                    d[body[i]] += 1.0
-                else:
-                    d[body[i]] = 1.0
-                sum += 1.0
-    d = sorted(d.items(), key=lambda d: d[1],reverse=True)
-    name = []
-    freq = []
-    freq_int = []
-    freq_norm = []
-    freq_norm_e = []
+            d[body[i]] = prob_list[i]
+            freq_norm.append(prob_list[i] / prob_sum)
+        d = sorted(d.items(), key=lambda d: d[1], reverse=True)
+        body_new = [d[_][0] for _ in range(len(d))]
+        print([d[_][1] for _ in range(len(d))])
+        return body_new, freq_norm
+    else:
+        prob_list_sorted = sorted(prob_list,reverse=True)
+        print(prob_list_sorted)
+        differ = []
 
-    freq_sum = 0.0
-    freq_sum_int = 0
-    for _ in range(len(d)):
-        n = d[_][0]
-        v = d[_][1]
-        v /= (sum/float(size))
-        name.append(n)
-        freq.append(v)
-        v_int = int('{:.0f}'.format(Decimal(str(v))))
-        freq_int.append(v_int)
-        freq_norm.append(v)
-        freq_sum += v
-        freq_sum_int += v_int
-    freq_interval = 0.0
-    for _ in range(len(freq)):
-        freq_norm[_] /= freq_sum
-        if _ == 0:
-            freq_interval = max_prob / freq_norm[_]
-            freq_norm[_] = max_prob
-        else:
-            freq_norm[_] *= freq_interval
-        freq_norm_e.append(math.pow(grow_base,freq_norm[_]))
-    print(name)
-    print(freq)
-    print(freq_int)
-    print(freq_norm)
-    print(freq_norm_e)
+        for i in range(1,len(prob_list_sorted)):
+            differ.append(prob_list[i-1]/prob_list_sorted[i])
+        print(differ)
+        d = {}
+        size = len(prob_list)
+        sum = 0.0
+        for _ in range(sample_count):
+            for i in range(len(prob_list)):
+                if random.uniform(0,0.9) < prob_list[i]:
+                    if body[i] in d:
+                        d[body[i]] += 1.0
+                    else:
+                        d[body[i]] = 1.0
+                    sum += 1.0
+        d = sorted(d.items(), key=lambda d: d[1],reverse=True)
+        body_new = []
+        freq = []
+        freq_norm = []
+        freq_limit = []
+        for _ in range(len(d)):
+            n = d[_][0]
+            v = d[_][1]
+            freq.append(v)
+            v_norm = v / sum
+            freq_norm.append(math.exp(v_norm))
+            v_limit = int('{:.0f}'.format(Decimal(str(v/(sum/float(size))))))
+            freq_limit.append(v_limit)
+            body_new.append(n)
+        return body_new,freq_norm
 
 
 
